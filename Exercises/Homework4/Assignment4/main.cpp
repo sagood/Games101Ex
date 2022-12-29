@@ -56,6 +56,29 @@ void bezier(const std::vector<cv::Point2f> &control_points, cv::Mat &window)
     {
         auto point = recursive_bezier(control_points, t);
         window.at<cv::Vec3b>(point.y, point.x)[1] = 255;
+
+        // anti-aliasing
+        std::vector<cv::Point2f> sample_points;
+        float x = point.x - std::floor(point.x);
+        float y = point.y - std::floor(point.y);
+        float offset_x = x < 0.5 ? -1.0f : 1.0f;
+        float offset_y = y < 0.5 ? -1.0f : 1.0f;
+        sample_points.push_back(cv::Point2f(std::floor(point.x) + 0.5f, std::floor(point.y) + 0.5f));
+        sample_points.push_back(cv::Point2f(std::floor(point.x) + offset_x, std::floor(point.y) + 0.5f));
+        sample_points.push_back(cv::Point2f(std::floor(point.x) + 0.5f + offset_x, std::floor(point.y) + offset_y));
+        sample_points.push_back(cv::Point2f(std::floor(point.x) + offset_x, std::floor(point.y) + offset_y));
+
+        cv::Point2f d = sample_points[0] - point;
+        float base = sqrt(d.x * d.x + d.y * d.y);
+        for (cv::Point2f p : sample_points)
+        {
+            cv::Point2f t = p - point;
+            float dist = sqrt(t.x * t.x + t.y * t.y);
+            cv::Vec3d color = window.at<cv::Vec3b>(p.y, p.x);
+            color[1] = std::max((float)color[1], 255.0f * (dist / base));
+            color[1] = 255;
+            window.at<cv::Vec3b>(p.y, p.x)[1] = color[1];
+        }
     }
 }
 
